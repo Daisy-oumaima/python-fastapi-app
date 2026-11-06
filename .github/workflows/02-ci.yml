@@ -1,7 +1,5 @@
 
 name: CI
-env:
-  APP_NAME: fastapi-starter
 
 on: [push]
 
@@ -23,15 +21,20 @@ jobs:
 
       - name: Vérifier le style
         run: ruff check .
-  
-      - name: Afficher les contextes 
+
+      - name: Afficher les contextes
+        env:
+          APP_NAME: fastapi-starter
         run: |
-            echo "Application : $APP_NAME"
-            echo "Acteur : ${{ github.actor }}"
-            echo "Evenement : ${{ github.event_name }}"
-            echo "Branche : ${{ github.ref_name }}"
-            echo "SHA : ${{ github.sha }}"
-            echo "OS : ${{ runner.os }}"
+          echo "Application : $APP_NAME"
+          echo "Acteur : ${{ github.actor }}"
+          echo "Evenement : ${{ github.event_name }}"
+          echo "Branche : ${{ github.ref_name }}"
+          echo "SHA : ${{ github.sha }}"
+          echo "OS : ${{ runner.os }}"
+
+      - name: Afficher le contexte GitHub
+        run: echo '${{ toJson(github) }}'
 
   build:
     name: Build – Vérifier l’application

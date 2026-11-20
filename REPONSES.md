@@ -35,3 +35,4 @@ GitHub n'a pas de shell par défaut. Il faut le préciser explicitement pour que
 
 **Partie 4 – comparaison :** l'action Docker est plus lente car il faut construire l'image (alpine + Dockerfile) à chaque exécution,
 alors que l'action composite exécute simplement des steps shell sur le runner (quelques secondes).
+Mesures : docker-hello = 11 s, build (composite) = 9 s

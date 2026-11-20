@@ -1,37 +1,27 @@
-# TP 6 – Réponses aux questions
+# TP 7– Réponses aux questions
 
-## Q1. Pourquoi la variable n'est-elle pas disponible dans la step qui l'a définie, mais seulement dans les suivantes ?
-`echo "APP_NAME=my-app" >> $GITHUB_ENV` ne modifie pas l'environnement du shell en cours : il ajoute seulement une ligne à un fichier. Le shell de la step a déjà été lancé avec son environnement figé. C'est le runner qui, une fois la step terminée, lit ce fichier et injecte les variables dans les steps suivantes.
+Q1. Pourquoi actions/checkout n’a-t-il pas besoin de with alors que setup-node en a besoin ?
+Toutes les entrées de checkout ont des valeurs par défaut adaptées (dépôt courant, branche du workflow), donc aucun paramètre n’est obligatoire. setup-node doit savoir quelle version de Node installer (node-version). with sert à passer des paramètres quand la valeur par défaut ne suffit pas.
 
-## Q2. Que constate-t-on dans `verify-env` ? Quelle est la portée de GITHUB_ENV ?
-La step affiche `APP_NAME = ` : la variable est vide. Chaque job s'exécute sur un runner distinct et neuf, et le fichier `GITHUB_ENV` est propre à un job. La portée de `GITHUB_ENV` est donc limitée aux steps suivantes du même job.
+Q2. Pourquoi verify ne retrouve-t-il pas report.txt sans l’artefact ?
+Chaque job tourne sur un runner distinct et vierge. Le dépôt ne contient que les fichiers commités. report.txt est généré pendant l’exécution du job build et n’existe que sur ce runner, qui est détruit à la fin du job. Les artefacts servent à transférer des fichiers d’un job à l’autre.
 
-## Q3. Que se passe-t-il avec `>` au lieu de `>>` dans GITHUB_OUTPUT, avec deux outputs dans la même step ?
-`>` écrase le fichier : le second `echo` efface le premier. Seul le dernier output est conservé, et le premier est vide à la lecture. Il faut utiliser `>>` pour ajouter plusieurs outputs.
+Q3. Pourquoi épingler une version (@v4) plutôt que @main ?
+@main pointe vers le dernier code de la branche, qui peut changer à tout moment. Un bug, un changement cassant ou un compromis du dépôt serait exécuté dans votre pipeline, avec accès à vos secrets. @v4 est stable et reproductible. Le plus sûr est d’épingler le SHA complet du commit.
 
-## Q4. Pourquoi GITHUB_ENV ne suffit-il pas entre jobs, alors que GITHUB_OUTPUT fonctionne ?
-`GITHUB_ENV` est limité à un job, car chaque job a son propre runner. `GITHUB_OUTPUT`, déclaré dans `outputs:` du job, est transmis par GitHub aux jobs dépendants, qui le lisent via `needs.<job>.outputs.<nom>`.
+Q4. Le badge « créateur vérifié » garantit-il qu’une action est sûre ?
+Non. Il prouve seulement que l’identité de l’éditeur est vérifiée par GitHub, pas que le code est sans faille ni sans malveillance. Un compte vérifié peut être compromis ou publier une version vulnérable. Il faut toujours relire le code et épingler une version.
 
-## Q5. Que se passe-t-il si on retire `needs: build` du job deploy ?
-`deploy` n'attend plus `build` et démarre en parallèle. Le contexte `needs.build` n'est plus disponible : `${{ needs.build.outputs.full_version }}` est vide. On perd l'ordre d'exécution et le transfert de la valeur. `deploy` peut même s'exécuter si `build` échoue.# Réponses
+Q5. Deux vérifications avant d’utiliser une action inconnue en production :
 
-**Q1. Pourquoi actions/checkout n'a-t-il pas besoin de `with` alors que setup-node en a besoin ?**
-Toutes les entrées de `checkout` ont des valeurs par défaut adaptées (dépôt courant, ref du workflow, etc.), donc aucun paramètre n'est obligatoire.
-`setup-node` doit savoir quelle version de Node installer (`node-version`) : sans ce paramètre, il ne sait pas quoi installer / utilise une valeur non voulue.
-`with` sert à passer des inputs, qui ne sont nécessaires que lorsque le défaut ne convient pas.
+Lire le code source (action.yml, scripts, Dockerfile) pour s’assurer qu’il n’envoie pas de secrets ou de données vers l’extérieur.
+Vérifier la réputation et la maintenance (étoiles, activité récente, issues, licence), puis épingler un SHA précis et limiter les permissions du GITHUB_TOKEN.
 
-**Q2. Pourquoi `verify` ne retrouve-t-il pas report.txt sans l'artefact alors que les deux jobs partagent le même dépôt ?**
-Chaque job s'exécute sur un runner distinct, propre et vierge. Le dépôt n'est que le code versionné ; `report.txt` est généré
-pendant l'exécution et n'est pas commité, il n'existe donc que sur le runner du job `build`, détruit à la fin du job.
-Les artefacts sont le mécanisme pour transférer des fichiers d'un job à l'autre.
+Q6. Pourquoi checkout doit-il s’exécuter avant l’appel d’une action locale ?
+Une action locale est un dossier du dépôt (./.github/actions/...). Le runner démarre vide : tant que checkout n’a pas cloné le dépôt, le fichier action.yml n’existe pas et l’action est introuvable.
 
-**Q6. Pourquoi checkout doit-il s'exécuter avant l'appel d'une action locale ?**
-Une action locale (`./.github/actions/...`) est un dossier du dépôt. Le runner démarre vide : tant que `checkout` n'a pas
-cloné le dépôt, `action.yml` n'existe pas sur le runner et l'action est introuvable.
+Q7. Pourquoi shell: bash est obligatoire dans une action composite ?
+Une action composite ne sait pas dans quel environnement elle sera appelée (Linux, Windows ou macOS). GitHub n’a donc pas de shell par défaut pour elle, et il faut le préciser explicitement.
 
-**Q7. Pourquoi `shell: bash` est-il obligatoire sur les steps `run` d'une action composite ?**
-Contrairement à un workflow, une action composite ne sait pas dans quel contexte elle sera appelée (Linux, Windows, macOS), donc
-GitHub n'a pas de shell par défaut. Il faut le préciser explicitement pour que le comportement soit déterministe.
-
-**Partie 4 – comparaison :** l'action Docker est plus lente car il faut construire l'image (alpine + Dockerfile) à chaque exécution,
-alors que l'action composite exécute simplement des steps shell sur le runner (quelques secondes).
+Partie 4 : comparaison des temps.
+L’action Docker est plus lente car l’image doit être construite à chaque exécution. L’action composite exécute directement des commandes shell sur le runner. Dans votre run : docker-hello = 11 s, build = 9 s.
